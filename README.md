@@ -1,26 +1,26 @@
-# jpf-cool-listeners
+# jpf-cool-jpf-cool-search-strategies
 
-This repo is a series of listener extensions for checking progress while jpf is searching.More listeners are expected to be added. 
+This repo is a series of search strategies. Basic PCT search is implemented
 
 ### Install 
 
 - Clone this repo under jpf home.  The recommended structure is:
 
   - jpf-core
-  - jpf-cool-listeners
+  - jpf-cool-search-strategies
   - ...
 
-- Add `jpf-progress` inside `~/.jpf/site.properties`, eg:
+- Add `jpf-cool-search-strategies` inside `~/.jpf/site.properties`, eg:
 
   ```properties
   ...
-  jpf-cool-listeners = ${jpf.home}/jpf-cool-listeners
-  extensions+=,${jpf-cool-listeners}
+  jpf-cool-search-strategies = ${jpf.home}/jpf-cool-search-strategies
+  extensions+=,${jpf-cool-search-strategies}
   ```
 
   
 
-- Inside `jpf-cool-listeners`, do `ant build`
+- Inside `jpf-cool-search-strategies`, do `ant build`
 
 
 
@@ -29,17 +29,16 @@ This repo is a series of listener extensions for checking progress while jpf is 
 - Inside the `.jpf` file you are trying to run, add 
 
 ```properties
-@using = jpf-cool-listeners
-listener = ${listener-you-wanna-use}
-...
-
+@using = jpf-cool-search-strategies
+search.class = .search.StatelessPCTSearch
+search.StatelessPCTSearch.path_limit = ...
 ```
 
 
 
 ### Reference
 
-- `PathCountEstimator.java` credit to: [K. Wang, H. Converse, M. Gligoric, S. Misailovic, and S. Khurshid. A progress bar for the JPF search using program executions. In JPF, 2018.](https://dl.acm.org/citation.cfm?id=3302419)
+- PCT strategy credit to: [Sebastian Burckhardt, Pravesh Kothari, Madanlal Musuvathi, and Santosh Nagarakatte. A randomized scheduler with probabilistic guarantees of finding bugs.](https://dl.acm.org/citation.cfm?id=1736040)
 
   
 
