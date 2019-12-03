@@ -1,0 +1,39 @@
+<project name="jpf-cool-search-strategies" default="build" basedir=".">
+  <property file="${user.home}/.jpf/site.properties"/>
+  <property name="jpf-core" value = "../jpf-core"/>
+  <property file="${jpf-core}/jpf.properties"/>
+
+  <!-- generic classpath settings -->
+  <path id="lib.path">
+    <!-- our own classes and libs come first -->
+    <pathelement location="build/main"/>
+    <!-- we don't have these
+    <pathelement location="build/peers"/>
+    -->
+    <!-- <fileset dir=".">
+        <include name="lib/*.jar"/>
+    	<include name="lib/examples-lib/*.jar"/>
+    </fileset> -->
+
+    <!-- add projects we depend on -->
+    <pathelement path="${jpf-core.native_classpath}"/>
+
+  </path>
+
+
+  <target name="compile">
+    <mkdir dir="build"/> 
+    <mkdir dir="build/main"/>
+    <javac srcdir="src/main" destdir="build/main" includeantruntime="false" classpathref="lib.path"/>
+    <mkdir dir="build/examples"/>
+    <javac srcdir="src/examples" destdir="build/examples" includeantruntime="false" classpathref="lib.path"/>
+  </target>
+
+
+<!-- build jars -->
+  <target name="build" depends="compile">
+    <jar jarfile="build/${ant.project.name}.jar" whenmanifestonly="skip">
+      <fileset dir="build/main" erroronmissingdir="false"/>
+    </jar>
+  </target>
+</project>
