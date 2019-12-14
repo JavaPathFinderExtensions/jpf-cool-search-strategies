@@ -31,8 +31,16 @@ This repo is a series of search strategies. Basic PCT search is implemented
 ```properties
 @using = jpf-cool-search-strategies
 search.class = .search.StatelessPCTSearch
+# optional params based on SUT:
 search.StatelessPCTSearch.path_limit = ...
+search.StatelessPCTSearch.n = ...
+search.StatelessPCTSearch.numPrioritySwitchPoints = ...
+search.StatelessPCTSearch.maxPrioritySwitchPoints = ...
 ```
+
+In regards of core `PCT`, here's an excerpt adapted from the reference paper
+
+![634DA21A-D919-4F55-B1E5-29CBE0FA6A05](img_pct.png)
 
 
 
