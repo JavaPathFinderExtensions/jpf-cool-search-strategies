@@ -9,35 +9,35 @@ import java.util.*;
 public class StatelessPCTSearch extends Search {
 
     private int path_limit;
-    private int maxPriority;
-    private int maxPrioritySwitchPoints;
+    private int n;
+    private int maxPrioritySwitchPoints;  // k
+    private int numPrioritySwitchPoints;  // d - 1
     private SortedSet<Integer> priorityChangePoints;
     private LinkedList<Integer> freePriority;
     protected PriorityQueue<DynamicPriorityVMState> childStates;
     protected HashMap<Integer, Integer> priorityMap;
     protected HashMap<Integer, Integer> scheduledStepsMap;
-    public static final int DEFAULT_BASE_PRIORITY = 0;
-    public static final int DEFAULT_POSITIVE_PRIORITY = 129;
 
 
     protected Random rand;
 
     public StatelessPCTSearch(Config config, VM vm) {
         super(config, vm);
-        this.path_limit = config.getInt("search.StatelessPCTSearch.path_limit", 10);
+        this.path_limit = config.getInt("search.StatelessPCTSearch.path_limit", 100);
         this.rand = new Random( config.getInt("choice.seed", 42));
-        this.maxPriority = 1024;
-        this.maxPrioritySwitchPoints = 100;
+        this.n = config.getInt("search.StatelessPCTSearch.n", 5);
+        this.numPrioritySwitchPoints = config.getInt("search.StatelessPCTSearch.numPrioritySwitchPoints", 1);
+        this.maxPrioritySwitchPoints = config.getInt("search.StatelessPCTSearch.maxPrioritySwitchPoints", 10);
         this.childStates = new PriorityQueue<>();
         this.priorityMap = new HashMap<>();
         this.scheduledStepsMap = new HashMap<>();
         this.priorityChangePoints = new TreeSet<>();
         this.freePriority = new LinkedList<>();
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < maxPrioritySwitchPoints; i++) {
             this.priorityChangePoints.add(rand.nextInt(maxPrioritySwitchPoints));
         }
-        for (int i = DEFAULT_POSITIVE_PRIORITY; i < maxPriority; i++) {
+        for (int i = numPrioritySwitchPoints + 1; i < numPrioritySwitchPoints + 1 + n; i++) { // d ~ d + n
             freePriority.add(i);
         }
         Collections.shuffle(freePriority);
@@ -108,7 +108,7 @@ public class StatelessPCTSearch extends Search {
         }
         scheduledStepsMap.put(curThreadId, scheduledSteps);
         if (priorityChangePoints.contains(scheduledSteps)) {
-            priorityMap.put(curThreadId, scheduledSteps);
+            priorityMap.put(curThreadId, priorityChangePoints.headSet(scheduledSteps).size() - 1); // index
         }
         return true;
     }
@@ -145,14 +145,14 @@ public class StatelessPCTSearch extends Search {
                     } else {
                         RestorableVMState newState = vm.getRestorableState();
                         if (newState != null) {
-                            DynamicPriorityVMState newChildState = new DynamicPriorityVMState(vm, DEFAULT_POSITIVE_PRIORITY);
+                            DynamicPriorityVMState newChildState = new DynamicPriorityVMState(vm, numPrioritySwitchPoints + 1);
                             int curThreadId = vm.getCurrentThread().getGlobalId();
                             if (priorityMap.containsKey(curThreadId)) {
                                 newChildState.setPriority(priorityMap.get(curThreadId));
                             }
                             else {
                                 if (freePriority.isEmpty()) {
-                                    for (int i = DEFAULT_POSITIVE_PRIORITY; i < maxPriority; i++) {
+                                    for (int i = numPrioritySwitchPoints + 1; i < numPrioritySwitchPoints + 1 + n; i++) { // d ~ d + n
                                         freePriority.add(i);
                                     }
                                     Collections.shuffle(freePriority);
@@ -186,18 +186,13 @@ public class StatelessPCTSearch extends Search {
         notifyStateRestored();
     }
 
-
-    private int randIntFromRange(int min, int max) {
-        return this.rand.nextInt((max - min) + 1) + min;
-    }
-
     private void reset() {
         depth = 1;
         this.childStates = new PriorityQueue<>();
         this.priorityMap = new HashMap<>();
         this.freePriority = new LinkedList<>();
         this.scheduledStepsMap = new HashMap<>();
-        for (int i = DEFAULT_POSITIVE_PRIORITY; i < maxPriority; i++) {
+        for (int i = numPrioritySwitchPoints + 1; i < numPrioritySwitchPoints + 1 + n; i++) { // d ~ d + n
             freePriority.add(i);
         }
         Collections.shuffle(freePriority);
