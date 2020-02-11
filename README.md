@@ -26,6 +26,10 @@ This repo is a series of search strategies. Basic PCT search is implemented
 
 ### Usage
 
+
+
+#### StatelessPCTSearch
+
 - Inside the `.jpf` file you are trying to run, add 
 
 ```properties
@@ -42,11 +46,25 @@ In regards of core `PCT`, here's an excerpt adapted from the reference paper
 
 ![634DA21A-D919-4F55-B1E5-29CBE0FA6A05](img_pct.png)
 
+#### DelayBoundedDFS
+
+```properties
+@using = jpf-cool-search-strategies
+search.class = gov.nasa.jpf.search.DelayBoundedDFS
+search.DelayBoundedDFS.delayBudget = ...
+# If set to true, exploring non-scheduling choices will not cost delay budget
+search.DelayBoundedDFS.scheduleCostOnly = ...
+```
+
+
+
 
 
 ### Reference
 
-- PCT strategy credit to: [Sebastian Burckhardt, Pravesh Kothari, Madanlal Musuvathi, and Santosh Nagarakatte. A randomized scheduler with probabilistic guarantees of finding bugs.](https://dl.acm.org/citation.cfm?id=1736040)
+- PCT strategy: [Sebastian Burckhardt, Pravesh Kothari, Madanlal Musuvathi, and Santosh Nagarakatte. A randomized scheduler with probabilistic guarantees of finding bugs.](https://dl.acm.org/citation.cfm?id=1736040)
+
+- DelayBoudedDFS: [Systematic Testing of Asynchronous Reactive Systems](https://dl.acm.org/doi/10.1145/2786805.2786861)
 
   
 
