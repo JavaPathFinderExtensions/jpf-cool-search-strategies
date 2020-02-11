@@ -1,17 +1,23 @@
 package gov.nasa.jpf.search;
 
 import gov.nasa.jpf.Config;
+import gov.nasa.jpf.JPF;
+import gov.nasa.jpf.util.JPFLogger;
+import gov.nasa.jpf.vm.ChoiceGenerator;
 import gov.nasa.jpf.vm.VM;
 
 import java.util.HashMap;
 
 public class DelayBoundedDFS extends Search {
     private int delayBudget;
+    private boolean scheduleChoiceOnly;
     private HashMap<Integer, Integer> exploredChoiceMap;  // key: stateID, value: # of choices explored for the state
-
+    static JPFLogger log = JPF.getLogger("gov.nasa.jpf.search.DelayBoundedDFS");
+    
     public DelayBoundedDFS(Config conf, VM vm) {
         super(conf, vm);
         this.delayBudget = config.getInt("search.DelayBoundedDFS.delayBudget", 0);
+        this.scheduleChoiceOnly = config.getBoolean("search.DelayBoundedDFS.scheduleCostOnly", false);
         this.exploredChoiceMap = new HashMap<>();
 
     }
@@ -29,6 +35,7 @@ public class DelayBoundedDFS extends Search {
     @Override
     public void search () {
         boolean depthLimitReached = false;
+        boolean freeForward = true;
         int prevStateID = -1;
         depth = 0;
 
@@ -41,11 +48,13 @@ public class DelayBoundedDFS extends Search {
                 if (!backtrack()) { // backtrack not possible, done
                     break;
                 }
-                System.out.println("backtracked to stateID: " + vm.getStateId());
-                if (exploredChoiceMap.get(vm.getStateId()) > 1) {
-                    // since we backtracked, we get back one delay budget spent on exploring prev state
+                log.info("backtracked to stateID: " + vm.getStateId());
+                freeForward = (scheduleChoiceOnly && !vm.getChoiceGenerator().isSchedulingPoint())
+                        || exploredChoiceMap.get(vm.getStateId()) <= 1;
+                if (!freeForward) {
+                    // since we backtracked, we get back one delay budget if it cost us to exploring prev state
                     delayBudget++;
-                    System.out.println("budget restored from " + (delayBudget-1) + " to " + delayBudget);
+                    log.info("budget restored from " + (delayBudget-1) + " to " + delayBudget);
                 }
 
                 depthLimitReached = false;
@@ -53,21 +62,23 @@ public class DelayBoundedDFS extends Search {
                 notifyStateBacktracked();
             }
             prevStateID = vm.getStateId();
-            System.out.println("Current stateID: " + vm.getStateId());
             exploredChoiceMap.putIfAbsent(prevStateID, 0);
-            if (!(exploredChoiceMap.get(vm.getStateId()) > 0) || delayBudget != 0) { // has budget to forward
+            ChoiceGenerator<?> curCg = vm.getChoiceGenerator();
+            freeForward = (scheduleChoiceOnly && curCg!= null && !vm.getChoiceGenerator().isSchedulingPoint())
+                    || exploredChoiceMap.get(prevStateID) == 0;
+            // allow vm to forward only if we are doing a free forward or have budget
+            if (freeForward || delayBudget > 0) {
                 if (forward()) {
-                    System.out.println("forwarded to stateID: " + vm.getStateId());
+                    log.info("forwarded to stateID: " + vm.getStateId());
                     depth++;
                     notifyStateAdvanced();
-                    if (exploredChoiceMap.get(prevStateID) > 0 ) { // not first choice, decrease budget
+                    if (!freeForward) {
                         delayBudget--;
-                        System.out.println("budget--, current budget: " + delayBudget);
+                        log.info("budget--, current budget: " + delayBudget);
                     }
                     exploredChoiceMap.putIfAbsent(vm.getStateId(), 0);
                     exploredChoiceMap.put(prevStateID, exploredChoiceMap.get(prevStateID) + 1);
-                    System.out.println("Prev State " + prevStateID + " explored choice updated to " + exploredChoiceMap.get(prevStateID));
-
+                    log.info("Prev State " + prevStateID + " explored choice count updated to " + exploredChoiceMap.get(prevStateID));
 
                     if (currentError != null){
                         notifyPropertyViolated();
@@ -90,14 +101,13 @@ public class DelayBoundedDFS extends Search {
                         // can't go on, we exhausted our memory
                         break;
                     }
-
-                    if (delayBudget == 0) {
-                        requestBacktrack();
-                    }
-
+                } else {
+                    // forward did not execute any instructions
+                    requestBacktrack();
+                    notifyStateProcessed();
                 }
-            } else { // forward did not execute any instructions
-                notifyStateProcessed();
+            } else {
+                requestBacktrack();
             }
         }
 
