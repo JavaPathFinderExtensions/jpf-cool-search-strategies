@@ -35,61 +35,50 @@ public class DelayBoundedDFS extends Search {
     @Override
     public void search () {
         boolean depthLimitReached = false;
-        boolean freeForward = true;
         int prevStateID = -1;
         depth = 0;
-
         notifySearchStarted();
 
         while (!done) {
             if (checkAndResetBacktrackRequest() || !isNewState() || isEndState() || isIgnoredState() || depthLimitReached ) {
-
-
                 if (!backtrack()) { // backtrack not possible, done
                     break;
                 }
                 log.info("backtracked to stateID: " + vm.getStateId());
-                freeForward = (scheduleChoiceOnly && !vm.getChoiceGenerator().isSchedulingPoint())
-                        || exploredChoiceMap.get(vm.getStateId()) <= 1;
-                if (!freeForward) {
+                if (!haveFreeForward(vm.getStateId() ,1)) {
                     // since we backtracked, we get back one delay budget if it cost us to exploring prev state
                     delayBudget++;
                     log.info("budget restored from " + (delayBudget-1) + " to " + delayBudget);
                 }
-
                 depthLimitReached = false;
                 depth--;
                 notifyStateBacktracked();
             }
+            
             prevStateID = vm.getStateId();
             exploredChoiceMap.putIfAbsent(prevStateID, 0);
-            ChoiceGenerator<?> curCg = vm.getChoiceGenerator();
-            freeForward = (scheduleChoiceOnly && curCg!= null && !vm.getChoiceGenerator().isSchedulingPoint())
-                    || exploredChoiceMap.get(prevStateID) == 0;
             // allow vm to forward only if we are doing a free forward or have budget
-            if (freeForward || delayBudget > 0) {
+            if (haveFreeForward(vm.getStateId(), 0) || delayBudget > 0) {
                 if (forward()) {
                     log.info("forwarded to stateID: " + vm.getStateId());
                     depth++;
                     notifyStateAdvanced();
-                    if (!freeForward) {
+                    if (!haveFreeForward(prevStateID, 0)) {
                         delayBudget--;
                         log.info("budget--, current budget: " + delayBudget);
                     }
                     exploredChoiceMap.putIfAbsent(vm.getStateId(), 0);
                     exploredChoiceMap.put(prevStateID, exploredChoiceMap.get(prevStateID) + 1);
-                    log.info("Prev State " + prevStateID + " explored choice count updated to " + exploredChoiceMap.get(prevStateID));
-
+                    log.info("Prev State " + prevStateID + " explored choice count updated to "
+                            + exploredChoiceMap.get(prevStateID));
                     if (currentError != null){
                         notifyPropertyViolated();
-
                         if (hasPropertyTermination()) {
                             break;
                         }
                         // for search.multiple_errors we go on and treat this as a new state
                         // but hasPropertyTermination() will issue a backtrack request
                     }
-
                     if (depth >= depthLimit) {
                         depthLimitReached = true;
                         notifySearchConstraintHit("depth limit reached: " + depthLimit);
@@ -110,7 +99,6 @@ public class DelayBoundedDFS extends Search {
                 requestBacktrack();
             }
         }
-
         notifySearchFinished();
     }
 
@@ -118,6 +106,12 @@ public class DelayBoundedDFS extends Search {
     @Override
     public boolean supportsBacktrack () {
         return true;
+    }
+
+    private boolean haveFreeForward(int stateId, int maxExploredAllowed) {
+        ChoiceGenerator<?> curCg = vm.getChoiceGenerator();
+        return (scheduleChoiceOnly && curCg!= null && !vm.getChoiceGenerator().isSchedulingPoint())
+                || exploredChoiceMap.get(stateId) <= maxExploredAllowed;
     }
 
 
